@@ -1,5 +1,6 @@
 using UnityEngine;
-using Unity.Cinemachine;
+
+using System.Collections;
 
 [RequireComponent(typeof(Rigidbody))] // Ensures that a Rigidbody component is attached to the GameObject
 public class CharacterMovement : MonoBehaviour
@@ -12,7 +13,7 @@ public class CharacterMovement : MonoBehaviour
 
     // ============================== Jump Settings =================================
     [Header("Jump Settings")]
-    [SerializeField] private float jumpForce = 5f;        // Jump force applied to the character
+    public float jumpForce = 5f;        // Jump force applied to the character
     [SerializeField] private float groundCheckDistance = 1.1f; // Distance to check for ground contact (Raycast)
 
     // ============================== Modifiable from other scripts ==================
@@ -27,6 +28,9 @@ public class CharacterMovement : MonoBehaviour
     private float moveZ; // Stores vertical movement input (W/S or Up/Down Arrow)
     private bool jumpRequest; // Flag to check if the player requested a jump
     private Vector3 moveDirection; // Stores the calculated movement direction
+    private Animator animator;
+    private bool doubleJump = false;
+    private bool doubleJumpActive = false;
 
     // ============================== Animation Variables ==============================
     [Header("Anim values")]
@@ -79,9 +83,11 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     private void InitializeComponents()
     {
+        animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>(); // Get the Rigidbody component
         rb.freezeRotation = true; // Prevent Rigidbody from rotating due to physics interactions
         rb.interpolation = RigidbodyInterpolation.Interpolate; // Smooth physics interpolation
+
 
         // Assign the main camera if available
         if (Camera.main)
@@ -156,11 +162,22 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     private void HandleJump()
     {
-        // Apply jump force only if jump was requested and the character is grounded
-        if (jumpRequest && IsGrounded)
+        if (jumpRequest)
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse); // Apply force upwards
-            jumpRequest = false; // Reset jump request after applying jump
+            if (IsGrounded)
+            {
+                rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+                rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+                doubleJumpActive = doubleJump;
+            }
+            else if (doubleJumpActive)
+            {
+                rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+                rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+                doubleJumpActive = false;
+                animator.SetTrigger("Flip");
+            }
+            jumpRequest = false;
         }
     }
 
@@ -198,5 +215,25 @@ public class CharacterMovement : MonoBehaviour
 
         // Apply the new velocity directly
         rb.velocity = newVelocity;
+    }
+    public void EnableDoubleJump(float doubleJumpDuration)
+    {
+        doubleJumpActive = true;
+        doubleJump = true;
+        Invoke(nameof(DisableDoubleJump), doubleJumpDuration);
+    }
+    private void DisableDoubleJump()
+    {
+        doubleJumpActive = false;
+        doubleJump = false;
+    }
+    public void isSpeedBoosted(float boostMultiplier, float speedBoostDuration)
+    {
+        speedMultiplier *= boostMultiplier;
+        Invoke(nameof(ResetSpeed), speedBoostDuration);
+    }
+    private void ResetSpeed()
+    {
+        speedMultiplier = 1.0f;
     }
 }

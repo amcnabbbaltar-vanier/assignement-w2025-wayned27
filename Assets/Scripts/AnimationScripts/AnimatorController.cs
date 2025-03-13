@@ -25,7 +25,6 @@ public class AnimatorController : MonoBehaviour
         {
             return;
         }
-
         animator.SetFloat("CharacterSpeed", rb.velocity.magnitude);
         animator.SetBool("IsFalling", !characterMovement.IsGrounded);
     }
